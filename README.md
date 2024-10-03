@@ -10,6 +10,7 @@ This repository consists of several ROS packages
         - RU_myo_node : responsible for upper myoband
     - Currently: for single armband it can searches for serial number automatically, but cannot do two armbands at the samee time. The collected rosbag data can be converted into csv.
     
-
+- ros_myo_interfaces
+    - Handle the ros msgs on imu/emg
 - robot_control:
     - robot_control node responsible for handling incoming imu messages and mapping it into robot control. 
