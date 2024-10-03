@@ -23,11 +23,14 @@ from geometry_msgs.msg import Quaternion, Vector3
 from sensor_msgs.msg import Imu
 from ros_myo_interfaces.msg import MyoArm, EmgArray
 from std_msgs.msg import Header
-
+from example_interfaces.srv import Trigger
 
 class RL_myo_node(Node):
     def __init__(self):
         super().__init__("rl_myo_node")
+        # Client for connection conflict
+        self.client = self.create_client(Trigger, 'manage_connection')
+        self.try_connect()
         # Start by initializing the Myo and attempting to connect. 
         # If no Myo is found, we attempt to reconnect every 0.5 seconds
 
@@ -39,33 +42,12 @@ class RL_myo_node(Node):
         # parser.add_argument('-a', '--arm-topic', default='myo_arm')
 
         # args = parser.parse_args()
-    
-        #White Myo
-        serial_port = "/dev/ttyACM1"
-        arm = "RL"
-        addr = [216, 104, 114, 134, 2, 221] 
         
-        
-        print('*****')
-        print(serial_port)
-        print("### RL ###")
-        print("Initializing...")
-        print()
-        
-        connected = 0
-        while(connected == 0):
-            try:
-                self.m = MyoRaw(serial_port, arm, addr)
-                connected = 1
-            except (ValueError, KeyboardInterrupt) as e:
-                print("Myo Armband not found. Attempting to connect...")
-                self.sleep(0.5)
-                pass
-
         # Define Publishers
         self.imuPub = self.create_publisher(Imu,'RL_myo/imu', 10)
         self.emgPub = self.create_publisher(EmgArray, 'RL_myo/emg', 10)
-
+        self.get_logger().info("I NEED M")
+        
         self.m.add_emg_handler(self.proc_emg)
         self.m.add_imu_handler(self.proc_imu)
 
@@ -75,6 +57,48 @@ class RL_myo_node(Node):
 
 
         # rospy.init_node('RL_myo_raw', anonymous=True)
+    def try_connect(self):
+        while not self.client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Connection service not available, waiting again...')
+        request = Trigger.Request()
+        future = self.client.call_async(request)
+        future.add_done_callback(self.handle_service_response)
+
+    def handle_service_response(self, future):
+        try:
+            response = future.result()
+            if response.success:
+                self.get_logger().info("Successfully connected to Myo armband.")
+                # Proceed with Myo armband connection and data handling
+                        #White Myo
+                # serial_port = "/dev/ttyACM1"
+                arm = "RL"
+                # addr = [216, 104, 114, 134, 2, 221] 
+                serial_port = None
+                addr = None
+                
+                
+                print('*****')
+                print(serial_port)
+                print("### RL ###")
+                print("Initializing...")
+                print()
+                
+                connected = 0
+                while(connected == 0):
+                    try:
+                        self.get_logger().info("Start trying to connect")
+                        self.m = MyoRaw(serial_port, arm, addr)
+                        self.get_logger().info("I got M!!!!")
+                        connected = 1
+                    except (ValueError, KeyboardInterrupt) as e:
+                        self.get_logger().info("Myo Armband not found. Attempting to connect...")
+                        self.sleep(0.5)
+                        pass
+            else:
+                self.get_logger().info("Failed to connect: " + response.message)
+        except Exception as e:
+            self.get_logger().error("Service call failed %r" % (e,))
 
     # Package the EMG data into an EmgArray
     def proc_emg(self, emg, moving, times=[]):

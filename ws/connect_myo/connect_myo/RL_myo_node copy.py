@@ -5,7 +5,6 @@ import argparse
 import time
 import math
 import serial
-import serial.serialutil
 from serial.tools.list_ports import comports
 
 from geometry_msgs.msg import Quaternion, Vector3
@@ -26,9 +25,9 @@ from ros_myo_interfaces.msg import MyoArm, EmgArray
 from std_msgs.msg import Header
 
 
-class RU_myo_node(Node):
+class RL_myo_node(Node):
     def __init__(self):
-        super().__init__("ru_myo_node")
+        super().__init__("rl_myo_node")
         # Start by initializing the Myo and attempting to connect. 
         # If no Myo is found, we attempt to reconnect every 0.5 seconds
 
@@ -40,19 +39,18 @@ class RU_myo_node(Node):
         # parser.add_argument('-a', '--arm-topic', default='myo_arm')
 
         # args = parser.parse_args()
-        
-        # target = rospy.get_param('target_pos')
-        #Black myo here
-        # serial_port = "/dev/ttyACM0"
+    
+        #White Myo
+        # serial_port = "/dev/ttyACM1"
+        arm = "RL"
+        # addr = [216, 104, 114, 134, 2, 221] 
         serial_port = None
-        arm = "RU"
-        # addr = [252, 47, 132, 4, 235, 241]
-        # addr = [18, 47, 165, 160, 46, 249]
         addr = None
-
+        
+        
         print('*****')
         print(serial_port)
-        print("### RU ###")
+        print("### RL ###")
         print("Initializing...")
         print()
         
@@ -67,8 +65,9 @@ class RU_myo_node(Node):
                 pass
 
         # Define Publishers
-        self.imuPub = self.create_publisher(Imu, 'RU_myo/imu', 10)
-        self.emgPub = self.create_publisher(EmgArray, 'RU_myo/emg', 10)
+        self.imuPub = self.create_publisher(Imu,'RL_myo/imu', 10)
+        self.emgPub = self.create_publisher(EmgArray, 'RL_myo/emg', 10)
+
         self.m.add_emg_handler(self.proc_emg)
         self.m.add_imu_handler(self.proc_imu)
 
@@ -77,6 +76,8 @@ class RU_myo_node(Node):
         thread_handle_read.join()
 
 
+        # rospy.init_node('RL_myo_raw', anonymous=True)
+
     # Package the EMG data into an EmgArray
     def proc_emg(self, emg, moving, times=[]):
         ## create an array of ints for emg data
@@ -84,8 +85,6 @@ class RU_myo_node(Node):
         msg.data = emg
         self.emgPub.publish(msg)
         print(emg)
-
-
         ## print framerate of received data
         times.append(time.time())
         if len(times) > 20:
@@ -100,9 +99,10 @@ class RU_myo_node(Node):
         # define MYOHW_GYROSCOPE_SCALE     16.0f    ///< See myohw_imu_data_t::gyroscope
         h = Header()
         h.stamp = self.get_clock().now().to_msg()
-        h.frame_id = 'RU_myo'
+        h.frame_id = 'RL_myo'
         # We currently do not know the covariance of the sensors with each other
         cov = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        # Convert Quat to ROS2 style
         quat = Quaternion(
             x = quat1[0] / 16384.0, 
             y = quat1[1] / 16384.0, 
@@ -128,7 +128,7 @@ class RU_myo_node(Node):
             y = gyro[1]/16.0, 
             z = gyro[2]/16.0
         )
-
+        # imu = Imu(h, normQuat, cov, normGyro, cov, normAcc, cov)
         imu = Imu(
             header = h,
             orientation = normQuat,
@@ -139,6 +139,7 @@ class RU_myo_node(Node):
             linear_acceleration_covariance = cov #TODO CHECK 
         )
         self.imuPub.publish(imu)
+
 
     def read_serial_data(self):
         self.m.connect()
@@ -154,33 +155,16 @@ class RU_myo_node(Node):
             self.m.disconnect()
 
 
-
-    
-
-    # try:
-
-    #     while not rospy.is_shutdown():
-    #         m.run(1)
-
-    # except (rospy.ROSInterruptException, serial.serialutil.SerialException) as e:
-    #     pass
-    # finally:
-    #     print()
-    #     print("Disconnecting...")
-    #     m.disconnect()
-    #     print()
-
-
 def main(args=None):
     rclpy.init(args=args)
-    RU_myo_node_spin = RU_myo_node()
+    RL_myo_node_spin = RL_myo_node()
 
     try:
-        rclpy.spin(RU_myo_node_spin)
-    except (rclpy.exceptions.ROSInterruptException, serial.serialutil.SerialException) as e:
+        rclpy.spin(RL_myo_node_spin)
+    except rclpy.exceptions.ROSInterruptException:
         pass
     finally:
-        RU_myo_node_spin.destroy_node()
+        RL_myo_node_spin.destroy_node()
         rclpy.shutdown()
 
 

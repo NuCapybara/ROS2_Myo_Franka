@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'rl_myo_node = connect_myo.RL_myo_node:main',
             'ru_myo_node = connect_myo.RU_myo_node:main',
+            'connect_manager = connect_myo.Connection_manager:main',
         ],
     },
 )

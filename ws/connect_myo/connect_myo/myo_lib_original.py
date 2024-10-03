@@ -216,10 +216,11 @@ class MyoRaw(object):
 
             if p.payload.endswith(b'\x06\x42\x48\x12\x4A\x7F\x2C\x48\x47\xB9\xDE\x04\xA9\x01\x00\x06\xD5'):
                 addr = list(multiord(p.payload[2:8]))
-                break
+                if self.addr == addr:
+                    print(self.arm, 'founded', p)
+                    break
             
         self.bt.end_scan()
-        print("end scanning")
 
         ## connect and wait for status event
         conn_pkt = self.bt.connect(addr)
