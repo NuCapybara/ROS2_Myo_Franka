@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="pickmeup" exec="pick_place" name="pick_place"/>
+    <node pkg="pickmeup" exec="run" name="run"/>
+    <node pkg="pickmeup" exec="delay_node" name="delay_node"/>
+</launch>

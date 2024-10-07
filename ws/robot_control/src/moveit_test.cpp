@@ -59,13 +59,13 @@ private:
         geometry_msgs::msg::Pose target_pose;
         tf2::Quaternion target_q;
         // target_q.setRPY(0.0, 0.0, 0.0);
-        target_pose.position.x = 0.0993012;
-        target_pose.position.y = -0.366235;
-        target_pose.position.z = 0.0127313;
-        target_pose.orientation.x = 0.645781;
-        target_pose.orientation.y = -0.513821;
-        target_pose.orientation.z = 0.450291;
-        target_pose.orientation.w = -0.340871;
+        target_pose.position.x = 0.306913;
+        target_pose.position.y = -0.354571;
+        target_pose.position.z = 0.590295;
+        target_pose.orientation.x = 0.92388;
+        target_pose.orientation.y = -0.38268;
+        target_pose.orientation.z = 1.12945e-5;
+        target_pose.orientation.w = 4.36084e-5;
         move_group_interface.setPoseTarget(target_pose, ee_link_name);
         
         moveit::planning_interface::MoveGroupInterface::Plan msg;

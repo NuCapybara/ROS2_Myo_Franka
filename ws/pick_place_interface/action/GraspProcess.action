@@ -1,0 +1,24 @@
+# Goal
+
+int32 object # The id of the object we are picking up
+bool reset_load 
+
+geometry_msgs/Pose observe_pose         # relative to the robot
+geometry_msgs/Pose refinement_pose     # relative to the handle
+geometry_msgs/Pose approach_pose       # relative to the handle
+geometry_msgs/Pose grasp_pose          # relative to the handle
+# geometry_msgs/Pose place_pose          # relative to the handle
+# franka_msgs/Grasp gripper_command       # command for the gripper
+
+# command for gripper
+float32 width
+float32 force
+float32 speed
+franka_msgs/GraspEpsilon epsilon
+
+geometry_msgs/Pose retreat_pose        # relative to the handle
+---
+# Result
+geometry_msgs/TransformStamped actual_grasp_pose
+---
+# Feedback
