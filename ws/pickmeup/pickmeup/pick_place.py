@@ -9,6 +9,7 @@ from rclpy.action import ActionServer, ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from pick_place_interface.action import EmptyAction, GraspProcess
 
+
 class pick_place(Node):
     def __init__(self):
         super().__init__("pick_place")
@@ -43,7 +44,11 @@ class pick_place(Node):
                                         "place",
                                         self.place_callback,
                                         callback_group=ReentrantCallbackGroup())
-
+        self.adjust_server = ActionServer(self,
+                                        EmptyAction,
+                                        "adjust",
+                                        self.adjust_callback,
+                                        callback_group=ReentrantCallbackGroup())
         self.size_x = 0.078
         self.size_y = 0.078
 
@@ -70,7 +75,14 @@ class pick_place(Node):
             retreat_pose=retreat_pose
         )
 
-        await self.grasp_planner.execute_grasp_plan(grasp_plan)
+        # Debugging and checking grasp plan execution
+        self.get_logger().info("Starting grasp execution")
+        result = await self.grasp_planner.execute_grasp_plan(grasp_plan)
+        if result.error_code != 0:
+            self.get_logger().error(f"Grasp execution failed with error code: {result.error_code}")
+        else:
+            self.get_logger().info("Grasp execution succeeded")
+
         goal_handle.succeed()
         return EmptyAction.Result()
     
@@ -106,7 +118,19 @@ class pick_place(Node):
             retreat_pose=retreat_pose
         )
 
-        await self.grasp_planner.execute_grasp_plan(grasp_plan)
+        # Debugging and checking grasp plan execution
+        self.get_logger().info("Starting place execution")
+        result = await self.grasp_planner.execute_grasp_plan(grasp_plan)
+        if result.error_code != 0:
+            self.get_logger().error(f"Place execution failed with error code: {result.error_code}")
+        else:
+            self.get_logger().info("Place execution succeeded")
+
+        goal_handle.succeed()
+        return EmptyAction.Result()
+    
+    async def adjust_callback(self, goal_handle):
+        self.get_logger().info("Adjusting camera (simulated adjust action)")
         goal_handle.succeed()
         return EmptyAction.Result()
     
@@ -117,6 +141,7 @@ class pick_place(Node):
             position=Point(x=position.x, y=position.y, z=position.z + offset_z),
             orientation=orientation
         )
+
 def main(args=None):
     rclpy.init(args=args)
     res = pick_place()

@@ -7,6 +7,8 @@ from pick_place_interface.action import EmptyAction
 from rclpy.action import ActionClient
 import numpy as np
 from pick_place_interface.srv import DelayTime
+from action_msgs.msg import GoalStatus
+
 
 
 class Run(Node):
@@ -61,7 +63,7 @@ class Run(Node):
             await self.pick_place()
 
     async def pick_place(self):
-
+        self.get_logger().info("Starting pick and place in run node")
         # go to observe position
         await self.moveit_api.plan_joint_async(
         ["panda_joint1", "panda_joint2", "panda_joint3",
@@ -72,13 +74,34 @@ class Run(Node):
         await self.delay_client.call_async(DelayTime.Request(time=2.0))
         
         # adjust camera
+        self.get_logger().info("Goal 1 starting now")
         goal1 = EmptyAction.Goal()
-        result = await self.action_client_adjust.send_goal_async(goal1)
-        await result.get_result_async()
+        #DEBUG
+
+        # result = await self.action_client_adjust.send_goal_async(goal1)
+        # await result.get_result_async()
+
+        #DEBUG
+        self.get_logger().info("Sending goal to adjust action")
+        goal_handle = await self.action_client_adjust.send_goal_async(goal1)
+
+        if not goal_handle.accepted:
+            self.get_logger().error("Adjust action goal rejected")
+        else:
+            self.get_logger().info("Adjust action goal accepted")
+
+        result = await goal_handle.get_result_async()
+
+        if result.status != rclpy.action.GoalStatus.STATUS_SUCCEEDED:
+            self.get_logger().error(f"Adjust action failed with status: {result.status}")
+        else:
+            self.get_logger().info("Adjust action succeeded")
+
 
         await self.delay_client.call_async(DelayTime.Request(time=2.0))
 
         # pick the object
+        self.get_logger().info("Goal 2 starting now")
         goal2 = EmptyAction.Goal()
         result = await self.action_client_pick.send_goal_async(goal2)
         await result.get_result_async()
@@ -87,6 +110,7 @@ class Run(Node):
         await self.moveit_api.go_home()
 
         # place the object
+        self.get_logger().info("Goal 3 starting now")
         goal3 = EmptyAction.Goal()
         result = await self.action_client_place.send_goal_async(goal3)
         await result.get_result_async()
