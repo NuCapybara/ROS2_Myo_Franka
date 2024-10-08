@@ -92,7 +92,7 @@ class Run(Node):
 
         result = await goal_handle.get_result_async()
 
-        if result.status != rclpy.action.GoalStatus.STATUS_SUCCEEDED:
+        if result.status != GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().error(f"Adjust action failed with status: {result.status}")
         else:
             self.get_logger().info("Adjust action succeeded")

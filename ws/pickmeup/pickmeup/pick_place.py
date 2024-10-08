@@ -15,8 +15,8 @@ class pick_place(Node):
         super().__init__("pick_place")
 
         # Define positions A and B on the desktop relative to the robot's base frame
-        self.position_A = Pose(position=Point(x=0.4, y=0.1, z=0.0), orientation=Quaternion(x=0, y=0, z=0, w=1))
-        self.position_B = Pose(position=Point(x=0.2, y=0.2, z=0.0), orientation=Quaternion(x=0, y=0, z=0, w=1))
+        self.position_A = Pose(position=Point(x=0.4, y=0.1, z=0.0), orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0))
+        self.position_B = Pose(position=Point(x=0.2, y=0.2, z=0.0), orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0))
 
         self.moveit_api = MoveItApi(
             self,
@@ -31,7 +31,7 @@ class pick_place(Node):
             self, GraspProcess, "grasp_process", callback_group=ReentrantCallbackGroup()
         )
 
-        self.q = Quaternion(x=0, y=0, z=0, w=1)
+        self.q = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
 
         self.pick_server = ActionServer(self,
                                         EmptyAction,
@@ -54,11 +54,14 @@ class pick_place(Node):
 
     async def pick_callback(self, goal_handle):
         # Define the approach, grasp, and retreat poses for picking the object at position A
-        approach_pose = self.create_pose(self.position_A.position, offset_z=0.10)
+        approach_pose = self.create_pose(self.position_A.position, offset_z=0.50)
 
-        grasp_pose = self.create_pose(self.position_A.position)
+        grasp_pose = Pose(
+            position=self.position_A.position,
+            orientation=self.q  # Use the default Quaternion properly
+        )
 
-        retreat_pose = self.create_pose(self.position_A.position, offset_z=0.10)
+        retreat_pose = self.create_pose(self.position_A.position, offset_z=0.50)
 
         # Log the grasp pose
         self.get_logger().info(f"Grasping object at: {grasp_pose}")
