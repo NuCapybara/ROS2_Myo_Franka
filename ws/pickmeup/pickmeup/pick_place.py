@@ -8,7 +8,7 @@ from franka_msgs.action import Grasp
 from rclpy.action import ActionServer, ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from pick_place_interface.action import EmptyAction, GraspProcess
-
+import math
 
 class pick_place(Node):
     def __init__(self):
@@ -51,17 +51,18 @@ class pick_place(Node):
                                         callback_group=ReentrantCallbackGroup())
         self.size_x = 0.078
         self.size_y = 0.078
+        # Set the downward-facing orientation for the end effector (facing ground)
+
+        self.downward_orientation = Quaternion(x=0.9999999999991198, y=0.0, z=0.0, w=1.3267948966775328e-06)
+
 
     async def pick_callback(self, goal_handle):
         # Define the approach, grasp, and retreat poses for picking the object at position A
-        approach_pose = self.create_pose(self.position_A.position, offset_z=0.50)
+        approach_pose = self.create_pose(self.position_A.position, offset_z=0.30, orientation=self.downward_orientation)
 
-        grasp_pose = Pose(
-            position=self.position_A.position,
-            orientation=self.q  # Use the default Quaternion properly
-        )
+        grasp_pose = self.create_pose(self.position_A.position, offset_z=0.05, orientation=self.downward_orientation)
 
-        retreat_pose = self.create_pose(self.position_A.position, offset_z=0.50)
+        retreat_pose = self.create_pose(self.position_A.position, offset_z=0.50, orientation=self.downward_orientation)
 
         # Log the grasp pose
         self.get_logger().info(f"Grasping object at: {grasp_pose}")
@@ -72,7 +73,7 @@ class pick_place(Node):
             grasp_pose=grasp_pose,
             grasp_command=Grasp.Goal(
                 width=0.078,  # Open the gripper wide enough for the 78mm cube
-                force=50.0,
+                force=60.0,
                 speed=0.05,
             ),
             retreat_pose=retreat_pose
@@ -91,20 +92,11 @@ class pick_place(Node):
     
     async def place_callback(self, goal_handle):
         # Define the approach, place, and retreat poses for placing the object at position B
-        approach_pose = Pose(
-            position=Point(x=self.position_B.position.x, y=self.position_B.position.y, z=self.position_B.position.z + 0.10),  # 10 cm above the place location
-            orientation=self.position_B.orientation
-        )
+        approach_pose = self.create_pose(self.position_B.position, offset_z=0.30, orientation=self.downward_orientation)
 
-        place_pose = Pose(
-            position=self.position_B.position,
-            orientation=self.position_B.orientation
-        )
+        place_pose = self.create_pose(self.position_B.position, offset_z=0.1, orientation=self.downward_orientation)
 
-        retreat_pose = Pose(
-            position=Point(x=self.position_B.position.x, y=self.position_B.position.y, z=self.position_B.position.z + 0.10),  # Retreat 10 cm above the object
-            orientation=self.position_B.orientation
-        )
+        retreat_pose = self.create_pose(self.position_B.position, offset_z=0.50, orientation=self.downward_orientation)
 
         # Log the place pose
         self.get_logger().info(f"Placing object at: {place_pose}")
@@ -115,7 +107,7 @@ class pick_place(Node):
             grasp_pose=place_pose,
             grasp_command=Grasp.Goal(
                 width=0.078,  # Open the gripper to release the 78mm cube
-                force=50.0,
+                force=60.0,
                 speed=0.05,
             ),
             retreat_pose=retreat_pose
@@ -144,6 +136,34 @@ class pick_place(Node):
             position=Point(x=position.x, y=position.y, z=position.z + offset_z),
             orientation=orientation
         )
+
+
+
+    def euler_to_quaternion(roll, pitch, yaw):
+        """
+        Convert Euler angles (roll, pitch, yaw) to a quaternion.
+        
+        Roll is rotation around the x-axis
+        Pitch is rotation around the y-axis
+        Yaw is rotation around the z-axis
+        """
+        # Precompute cos and sin of half angles
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
+
+        # Compute quaternion components
+        w = cr * cp * cy + sr * sp * sy
+        x = sr * cp * cy - cr * sp * sy
+        y = cr * sp * cy + sr * cp * sy
+        z = cr * cp * sy - sr * sp * cy
+
+        return x, y, z, w
+
+
 
 def main(args=None):
     rclpy.init(args=args)
