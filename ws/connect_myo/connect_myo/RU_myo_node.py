@@ -43,12 +43,11 @@ class RU_myo_node(Node):
         
         # target = rospy.get_param('target_pos')
         #Black myo here
-        # serial_port = "/dev/ttyACM0"
-        serial_port = None
+        serial_port = "/dev/ttyACM0"
+        # serial_port = None
         arm = "RU"
-        # addr = [252, 47, 132, 4, 235, 241]
-        # addr = [18, 47, 165, 160, 46, 249]
-        addr = None
+        addr = [18, 47, 165, 160, 46, 249]
+        
 
         print('*****')
         print(serial_port)

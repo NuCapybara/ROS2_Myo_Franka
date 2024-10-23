@@ -5,7 +5,7 @@
     <!-- <rosparam param="target_pos">target_0</rosparam> -->
     <node pkg="connect_myo" exec="ru_myo_node" name="RU_myo_node"/>
     <node pkg="connect_myo" exec="rl_myo_node" name="RL_myo_node"/>
-    <node pkg="connect_myo" exec="connect_manager" name="Connect_manager"/>
+    <!-- <node pkg="connect_myo" exec="connect_manager" name="Connect_manager"/> -->
 
     <group if="$(eval '\'$(var plot_raw_emg_imu)\' == \'true\'')">
         <node name="plot_raw_emg"

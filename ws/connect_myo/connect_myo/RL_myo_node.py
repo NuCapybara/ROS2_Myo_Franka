@@ -5,6 +5,7 @@ import argparse
 import time
 import math
 import serial
+import serial.serialutil
 from serial.tools.list_ports import comports
 
 from geometry_msgs.msg import Quaternion, Vector3
@@ -23,14 +24,11 @@ from geometry_msgs.msg import Quaternion, Vector3
 from sensor_msgs.msg import Imu
 from ros_myo_interfaces.msg import MyoArm, EmgArray
 from std_msgs.msg import Header
-from example_interfaces.srv import Trigger
+
 
 class RL_myo_node(Node):
     def __init__(self):
         super().__init__("rl_myo_node")
-        # Client for connection conflict
-        self.client = self.create_client(Trigger, 'manage_connection')
-        self.try_connect()
         # Start by initializing the Myo and attempting to connect. 
         # If no Myo is found, we attempt to reconnect every 0.5 seconds
 
@@ -43,11 +41,34 @@ class RL_myo_node(Node):
 
         # args = parser.parse_args()
         
-        # Define Publishers
-        self.imuPub = self.create_publisher(Imu,'RL_myo/imu', 10)
-        self.emgPub = self.create_publisher(EmgArray, 'RL_myo/emg', 10)
-        self.get_logger().info("I NEED M")
+        # target = rospy.get_param('target_pos')
+        #White myo here
+        serial_port = "/dev/ttyACM1"
+        # serial_port = None
+        arm = "RL"
+        addr = [216, 104, 114, 134, 2, 221]
+
         
+
+        print('*****')
+        print(serial_port)
+        print("### RL ###")
+        print("Initializing...")
+        print()
+        
+        connected = 0
+        while(connected == 0):
+            try:
+                self.m = MyoRaw(serial_port, arm, addr)
+                connected = 1
+            except (ValueError, KeyboardInterrupt) as e:
+                print("Myo Armband not found. Attempting to connect...")
+                self.sleep(0.5)
+                pass
+
+        # Define Publishers
+        self.imuPub = self.create_publisher(Imu, 'RL_myo/imu', 10)
+        self.emgPub = self.create_publisher(EmgArray, 'RL_myo/emg', 10)
         self.m.add_emg_handler(self.proc_emg)
         self.m.add_imu_handler(self.proc_imu)
 
@@ -56,50 +77,6 @@ class RL_myo_node(Node):
         thread_handle_read.join()
 
 
-        # rospy.init_node('RL_myo_raw', anonymous=True)
-    def try_connect(self):
-        while not self.client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Connection service not available, waiting again...')
-        request = Trigger.Request()
-        future = self.client.call_async(request)
-        future.add_done_callback(self.handle_service_response)
-
-    def handle_service_response(self, future):
-        try:
-            response = future.result()
-            if response.success:
-                self.get_logger().info("Successfully connected to Myo armband.")
-                # Proceed with Myo armband connection and data handling
-                        #White Myo
-                # serial_port = "/dev/ttyACM1"
-                arm = "RL"
-                # addr = [216, 104, 114, 134, 2, 221] 
-                serial_port = None
-                addr = None
-                
-                
-                print('*****')
-                print(serial_port)
-                print("### RL ###")
-                print("Initializing...")
-                print()
-                
-                connected = 0
-                while(connected == 0):
-                    try:
-                        self.get_logger().info("Start trying to connect")
-                        self.m = MyoRaw(serial_port, arm, addr)
-                        self.get_logger().info("I got M!!!!")
-                        connected = 1
-                    except (ValueError, KeyboardInterrupt) as e:
-                        self.get_logger().info("Myo Armband not found. Attempting to connect...")
-                        self.sleep(0.5)
-                        pass
-            else:
-                self.get_logger().info("Failed to connect: " + response.message)
-        except Exception as e:
-            self.get_logger().error("Service call failed %r" % (e,))
-
     # Package the EMG data into an EmgArray
     def proc_emg(self, emg, moving, times=[]):
         ## create an array of ints for emg data
@@ -107,6 +84,8 @@ class RL_myo_node(Node):
         msg.data = emg
         self.emgPub.publish(msg)
         print(emg)
+
+
         ## print framerate of received data
         times.append(time.time())
         if len(times) > 20:
@@ -124,7 +103,6 @@ class RL_myo_node(Node):
         h.frame_id = 'RL_myo'
         # We currently do not know the covariance of the sensors with each other
         cov = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        # Convert Quat to ROS2 style
         quat = Quaternion(
             x = quat1[0] / 16384.0, 
             y = quat1[1] / 16384.0, 
@@ -150,7 +128,7 @@ class RL_myo_node(Node):
             y = gyro[1]/16.0, 
             z = gyro[2]/16.0
         )
-        # imu = Imu(h, normQuat, cov, normGyro, cov, normAcc, cov)
+
         imu = Imu(
             header = h,
             orientation = normQuat,
@@ -161,7 +139,6 @@ class RL_myo_node(Node):
             linear_acceleration_covariance = cov #TODO CHECK 
         )
         self.imuPub.publish(imu)
-
 
     def read_serial_data(self):
         self.m.connect()
@@ -177,13 +154,30 @@ class RL_myo_node(Node):
             self.m.disconnect()
 
 
+
+    
+
+    # try:
+
+    #     while not rospy.is_shutdown():
+    #         m.run(1)
+
+    # except (rospy.ROSInterruptException, serial.serialutil.SerialException) as e:
+    #     pass
+    # finally:
+    #     print()
+    #     print("Disconnecting...")
+    #     m.disconnect()
+    #     print()
+
+
 def main(args=None):
     rclpy.init(args=args)
     RL_myo_node_spin = RL_myo_node()
 
     try:
         rclpy.spin(RL_myo_node_spin)
-    except rclpy.exceptions.ROSInterruptException:
+    except (rclpy.exceptions.ROSInterruptException, serial.serialutil.SerialException) as e:
         pass
     finally:
         RL_myo_node_spin.destroy_node()
