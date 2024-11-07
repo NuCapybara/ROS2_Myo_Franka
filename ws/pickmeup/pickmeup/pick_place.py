@@ -18,11 +18,11 @@ class pick_place(Node):
 
         # Define positions A and B on the desktop relative to the robot's base frame
         self.position_A = Pose(
-            position=Point(x=0.4, y=0.1, z=0.0),
+            position=Point(x=0.47, y=0.071, z=0.0),
             orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
         )
         self.position_B = Pose(
-            position=Point(x=0.2, y=0.2, z=0.0),
+            position=Point(x=0.4700, y=0.3710, z=0.0),
             orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
         )
 
@@ -81,7 +81,7 @@ class pick_place(Node):
 
         grasp_pose = self.create_pose(
             self.position_A.position,
-            offset_z=0.06,
+            offset_z=0.08,
             orientation=self.downward_orientation,
         )
 
@@ -94,17 +94,13 @@ class pick_place(Node):
         # Log the grasp pose
         self.get_logger().info(f"Grasping object at: {grasp_pose}")
         epsilon = GraspEpsilon(inner=0.05, outer=0.05)
-        
+
         # Create the grasp plan
         grasp_plan = GraspPlan(
             approach_pose=approach_pose,
             grasp_pose=grasp_pose,
             grasp_command=Grasp.Goal(
-                width=0.02,
-                force=50.0,
-                speed=0.05,
-                epsilon=epsilon
-
+                width=0.02, force=50.0, speed=0.05, epsilon=epsilon
             ),
             retreat_pose=retreat_pose,
         )
@@ -132,7 +128,8 @@ class pick_place(Node):
 
         place_pose = self.create_pose(
             self.position_B.position,
-            offset_z=0.1,
+            # offset_z= (0.1),
+            offset_z=(0.09 + 0.078),
             orientation=self.downward_orientation,
         )
 
@@ -149,12 +146,7 @@ class pick_place(Node):
         grasp_plan = GraspPlan(
             approach_pose=approach_pose,
             grasp_pose=place_pose,
-            grasp_command=Grasp.Goal(
-                width=0.1,
-                force=50.0,
-                speed=0.2,
-                epsilon=epsilon
-            ),
+            grasp_command=Grasp.Goal(width=0.1, force=50.0, speed=0.2, epsilon=epsilon),
             retreat_pose=retreat_pose,
         )
 

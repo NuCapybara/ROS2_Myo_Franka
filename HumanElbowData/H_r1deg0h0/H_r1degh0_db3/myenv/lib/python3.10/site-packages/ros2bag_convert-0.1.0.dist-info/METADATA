@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: ros2bag-convert
+Version: 0.1.0
+Summary: Convert ROS2 bag files to CSV, JSON, etc. 
+Home-page: UNKNOWN
+Maintainer: fishros
+Maintainer-email: sangxin2014@sina.com
+License: MIT License (MIT)
+Platform: UNKNOWN
+Requires-Dist: setuptools
+
+UNKNOWN
+
+

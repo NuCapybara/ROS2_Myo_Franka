@@ -3,24 +3,24 @@
     <arg name="plot_raw_emg_imu" default="true" description="plot lower and upper raw EMG signals"/>
 
     <!-- <rosparam param="target_pos">target_0</rosparam> -->
-    <node pkg="connect_myo" exec="ru_myo_node" name="RU_myo_node"/>
-    <node pkg="connect_myo" exec="rl_myo_node" name="RL_myo_node"/>
+    <node pkg="connect_myo" exec="ru_myo_node" name="RU_myo_node">
+        <!-- <param name="serial_port" value="/dev/ttyACM0" />
+        <param name="arm" value="RU" />
+        <param name="addr" value="[18, 47, 165, 160, 46, 249]"/> -->
+
+    </node>
+    <node pkg="connect_myo" exec="rl_myo_node" name="RL_myo_node">
+    </node>
     <!-- <node pkg="connect_myo" exec="connect_manager" name="Connect_manager"/> -->
 
     <group if="$(eval '\'$(var plot_raw_emg_imu)\' == \'true\'')">
         <node name="plot_raw_emg"
             pkg="rqt_plot"
             exec="rqt_plot"
-            args="/RU_myo/emg/data[0] 
-                /RU_myo/emg/data[1]
-                /RU_myo/emg/data[2]
-                /RU_myo/emg/data[3]
-                /RU_myo/emg/data[4]
-                /RU_myo/emg/data[5]
-                /RU_myo/emg/data[6]
-                /RU_myo/emg/data[7]"/>
+            args="/RU_myo/imu/linear_acceleration/x 
+                /RL_myo/imu/linear_acceleration/x"/>
 
-        <node name="plot_raw_ori"
+        <!-- <node name="plot_raw_ori"
             pkg="rqt_plot"
             exec="rqt_plot"
             args="/RU_myo/imu/orientation/x
@@ -41,7 +41,7 @@
             args="/RU_myo/imu/linear_acceleration/x
                 /RU_myo/imu/linear_acceleration/y
                 /RU_myo/imu/linear_acceleration/z
-            "/>
+            "/> -->
     </group>
 
 </launch>

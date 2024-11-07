@@ -29,34 +29,41 @@ from std_msgs.msg import Header
 class RU_myo_node(Node):
     def __init__(self):
         super().__init__("ru_myo_node")
-        # Start by initializing the Myo and attempting to connect. 
+        # Start by initializing the Myo and attempting to connect.
         # If no Myo is found, we attempt to reconnect every 0.5 seconds
+        self.declare_parameter("serial_port", "/dev/ttyACM0")
+        self.declare_parameter("arm", "RU")
+        self.declare_parameter("addr", "[18, 47, 165, 160, 46, 249]")
+        
 
         # parser = argparse.ArgumentParser()
         # parser.add_argument('serial_port', nargs='?', default=None)
+        serial_port = self.get_parameter("serial_port").get_parameter_value().string_value
+        arm = self.get_parameter("arm").get_parameter_value().string_value
+        addr = eval(self.get_parameter("addr").get_parameter_value().string_value)  # Convert string to list
 
+        print(f"Starting RU node with port {serial_port}, arm {arm}, and addr {addr}")
         # parser.add_argument('-i', '--imu-topic', default='myo_imu')
         # parser.add_argument('-e', '--emg-topic', default='myo_emg')
         # parser.add_argument('-a', '--arm-topic', default='myo_arm')
 
         # args = parser.parse_args()
-        
-        # target = rospy.get_param('target_pos')
-        #Black myo here
-        serial_port = "/dev/ttyACM0"
-        # serial_port = None
-        arm = "RU"
-        addr = [18, 47, 165, 160, 46, 249]
-        
 
-        print('*****')
+        # target = rospy.get_param('target_pos')
+        # Black myo here
+        # serial_port = "/dev/ttyACM0"
+        # # serial_port = None
+        # arm = "RU"
+        # addr = [18, 47, 165, 160, 46, 249]
+
+        print("*****")
         print(serial_port)
         print("### RU ###")
         print("Initializing...")
         print()
-        
+
         connected = 0
-        while(connected == 0):
+        while connected == 0:
             try:
                 self.m = MyoRaw(serial_port, arm, addr)
                 connected = 1
@@ -66,15 +73,14 @@ class RU_myo_node(Node):
                 pass
 
         # Define Publishers
-        self.imuPub = self.create_publisher(Imu, 'RU_myo/imu', 10)
-        self.emgPub = self.create_publisher(EmgArray, 'RU_myo/emg', 10)
+        self.imuPub = self.create_publisher(Imu, "RU_myo/imu", 10)
+        self.emgPub = self.create_publisher(EmgArray, "RU_myo/emg", 10)
         self.m.add_emg_handler(self.proc_emg)
         self.m.add_imu_handler(self.proc_imu)
 
         thread_handle_read = threading.Thread(target=self.read_serial_data)
         thread_handle_read.start()
         thread_handle_read.join()
-
 
     # Package the EMG data into an EmgArray
     def proc_emg(self, emg, moving, times=[]):
@@ -84,12 +90,12 @@ class RU_myo_node(Node):
         self.emgPub.publish(msg)
         print(emg)
 
-
         ## print framerate of received data
         times.append(time.time())
         if len(times) > 20:
-            #print((len(times) - 1) / (times[-1] - times[0]))
+            # print((len(times) - 1) / (times[-1] - times[0]))
             times.pop(0)
+
     # Package the IMU data into an Imu message
     def proc_imu(self, quat1, acc, gyro):
         # New info: https://github.com/thalmiclabs/myo-bluetooth/blob/master/myohw.h#L292-L295
@@ -99,43 +105,37 @@ class RU_myo_node(Node):
         # define MYOHW_GYROSCOPE_SCALE     16.0f    ///< See myohw_imu_data_t::gyroscope
         h = Header()
         h.stamp = self.get_clock().now().to_msg()
-        h.frame_id = 'RU_myo'
+        h.frame_id = "RU_myo"
         # We currently do not know the covariance of the sensors with each other
         cov = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         quat = Quaternion(
-            x = quat1[0] / 16384.0, 
-            y = quat1[1] / 16384.0, 
-            z = quat1[2] / 16384.0, 
-            w = quat1[3] / 16384.0,
+            x=quat1[0] / 16384.0,
+            y=quat1[1] / 16384.0,
+            z=quat1[2] / 16384.0,
+            w=quat1[3] / 16384.0,
         )
         ## Normalize the quaternion and accelerometer values
         ## TODO: check if this is shown in imu msg
-        quatNorm = math.sqrt(quat.x*quat.x+quat.y*quat.y+quat.z*quat.z+quat.w*quat.w)
+        quatNorm = math.sqrt(
+            quat.x * quat.x + quat.y * quat.y + quat.z * quat.z + quat.w * quat.w
+        )
         normQuat = Quaternion(
-            x = quat.x/quatNorm, 
-            y = quat.y/quatNorm, 
-            z = quat.z/quatNorm,
-            w = quat.w/quatNorm,
+            x=quat.x / quatNorm,
+            y=quat.y / quatNorm,
+            z=quat.z / quatNorm,
+            w=quat.w / quatNorm,
         )
-        normAcc = Vector3(
-            x = acc[0]/2048.0, 
-            y = acc[1]/2048.0, 
-            z = acc[2]/2048.0
-        )
-        normGyro = Vector3(
-            x = gyro[0]/16.0, 
-            y = gyro[1]/16.0, 
-            z = gyro[2]/16.0
-        )
+        normAcc = Vector3(x=acc[0] / 2048.0, y=acc[1] / 2048.0, z=acc[2] / 2048.0)
+        normGyro = Vector3(x=gyro[0] / 16.0, y=gyro[1] / 16.0, z=gyro[2] / 16.0)
 
         imu = Imu(
-            header = h,
-            orientation = normQuat,
-            orientation_covariance = cov, #TODO CHECK
-            angular_velocity = normGyro, 
-            angular_velocity_covariance = cov,#TODO CHECK
-            linear_acceleration = normAcc,
-            linear_acceleration_covariance = cov #TODO CHECK 
+            header=h,
+            orientation=normQuat,
+            orientation_covariance=cov,  # TODO CHECK
+            angular_velocity=normGyro,
+            angular_velocity_covariance=cov,  # TODO CHECK
+            linear_acceleration=normAcc,
+            linear_acceleration_covariance=cov,  # TODO CHECK
         )
         self.imuPub.publish(imu)
 
@@ -151,10 +151,6 @@ class RU_myo_node(Node):
             self.get_logger().error(f"Error in read_serial_data: {e}")
         finally:
             self.m.disconnect()
-
-
-
-    
 
     # try:
 
@@ -176,7 +172,10 @@ def main(args=None):
 
     try:
         rclpy.spin(RU_myo_node_spin)
-    except (rclpy.exceptions.ROSInterruptException, serial.serialutil.SerialException) as e:
+    except (
+        rclpy.exceptions.ROSInterruptException,
+        serial.serialutil.SerialException,
+    ) as e:
         pass
     finally:
         RU_myo_node_spin.destroy_node()

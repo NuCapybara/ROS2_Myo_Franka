@@ -212,20 +212,20 @@ class MyoRaw(object):
         self.bt.discover()
         while True:
             p = self.bt.recv_packet()
-            # print(self.arm, 'scan response:', p)
-
-            if p.payload.endswith(b'\x06\x42\x48\x12\x4A\x7F\x2C\x48\x47\xB9\xDE\x04\xA9\x01\x00\x06\xD5'):
+            
+            # Check if the address matches the intended Myo address
+            if p.payload[2:8] == multichr(self.addr):  # Ensure the payload matches expected `addr`
                 addr = list(multiord(p.payload[2:8]))
+                print(f"Found Myo armband for {self.arm} with address {addr}")
                 break
             
         self.bt.end_scan()
-        print("end scanning")
+        print("End scanning")
 
         ## connect and wait for status event
         conn_pkt = self.bt.connect(addr)
         self.conn = multiord(conn_pkt.payload)[-1]
         self.bt.wait_event(3, 0)
-
         ## get firmware version
         fw = self.read_attr(0x17)
         _, _, _, _, v0, v1, v2, v3 = unpack('BHBBHHHH', fw.payload)

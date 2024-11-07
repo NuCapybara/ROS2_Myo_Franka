@@ -38,15 +38,22 @@ class RL_myo_node(Node):
         # parser.add_argument('-i', '--imu-topic', default='myo_imu')
         # parser.add_argument('-e', '--emg-topic', default='myo_emg')
         # parser.add_argument('-a', '--arm-topic', default='myo_arm')
+        self.declare_parameter("serial_port", "/dev/ttyACM1")
+        self.declare_parameter("arm", "RL")
+        self.declare_parameter("addr", "[216, 104, 114, 134, 2, 221]")  # Directly declare as an integer array
 
+        serial_port = self.get_parameter("serial_port").get_parameter_value().string_value
+        arm = self.get_parameter("arm").get_parameter_value().string_value
+        addr = eval(self.get_parameter("addr").get_parameter_value().string_value)  # Convert string to list
+        print(f"Starting RL node with port {serial_port}, arm {arm}, and addr {addr}")
         # args = parser.parse_args()
         
         # target = rospy.get_param('target_pos')
         #White myo here
-        serial_port = "/dev/ttyACM1"
-        # serial_port = None
-        arm = "RL"
-        addr = [216, 104, 114, 134, 2, 221]
+        # serial_port = "/dev/ttyACM1"
+        # # serial_port = None
+        # arm = "RL"
+        # addr = [216, 104, 114, 134, 2, 221]
 
         
 
