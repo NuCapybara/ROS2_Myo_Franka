@@ -26,6 +26,7 @@ sys.path.append(os.path.dirname(__file__))
 from mVAE import network_param, VariationalAutoencoder, xavier_init
 import pandas as pd
 import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
 from collections import deque
 
 class Robot_myo(Node):
@@ -47,15 +48,12 @@ class Robot_myo(Node):
         self.rl_imu_buffer = deque(maxlen=self.imu_max_size)
         self.robot_joint_pred = None
 
-        # Define model
-        with tf.Graph().as_default() as g:
-            with tf.Session() as sess:
+        self.sess = tf.Session() 
+        network_architecture = network_param()
+        learning_rate = 0.00001
+        self.sample_init = 0
 
-                network_architecture = network_param()
-                learning_rate = 0.00001
-                self.sample_init = 0
-
-                self.model = VariationalAutoencoder(sess,network_architecture, batch_size=self.batch_size, learning_rate=learning_rate, vae_mode=False, vae_mode_modalities=False)
+        self.model = VariationalAutoencoder(self.sess,network_architecture, batch_size=self.batch_size, learning_rate=learning_rate, vae_mode=False, vae_mode_modalities=False)
 
         # move it api to home robot
         self.moveit_api = MoveItApi(
@@ -309,11 +307,17 @@ class Robot_myo(Node):
                 return x_pred
 
     def stream_to_model(self):
-        with tf.Session() as sess:
+        with self.sess as sess:
             new_saver = tf.train.Saver()
             param_id= 1
-            new_saver.restore(sess, "model/models/b1k_e80k_eval/mvae_conf_"+str(param_id)+".ckpt") ###load trained model
-            self.get_logger.info("Model restored.")
+
+            try:
+                new_saver.restore(sess, "/home/jialuyu/Final_Project/data_collect_myo/ROS2_Myo_Franka/ws/models/b1k_e80k_eval/mvae_conf_"+str(param_id)+".ckpt") ###load trained model
+                self.get_logger().info("Model restored.")
+
+            except ValueError as e:
+                self.get_logger().error("Model not restored. Error: {}".format(e))
+                return
             X_augm_test = self.build_feed_in_emgimu()
             if X_augm_test is not None: 
                 x_reconstruct, x_reconstruct_log_sigma_sq= self.model.reconstruct(sess,X_augm_test)
@@ -349,6 +353,7 @@ class Robot_myo(Node):
             self.robot_joint_pred[0], self.robot_joint_pred[1], self.robot_joint_pred[2], self.robot_joint_pred[3], self.robot_joint_pred[4], self.robot_joint_pred[5], self.robot_joint_pred[6],
             execute=True
         )
+
             
         # await self.moveit_api.plan_joint_async(
         # ["panda_joint1", "panda_joint2", "panda_joint3",
