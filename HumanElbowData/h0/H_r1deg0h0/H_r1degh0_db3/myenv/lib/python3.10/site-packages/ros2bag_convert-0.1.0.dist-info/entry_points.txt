@@ -1,0 +1,3 @@
+[console_scripts]
+ros2bag-convert = ros2bag_convert.main:main
+

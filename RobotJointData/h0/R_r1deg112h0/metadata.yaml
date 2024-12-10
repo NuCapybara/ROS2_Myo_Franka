@@ -1,0 +1,28 @@
+rosbag2_bagfile_information:
+  version: 7
+  storage_identifier: mcap
+  duration:
+    nanoseconds: 45699507739
+  starting_time:
+    nanoseconds_since_epoch: 1729984504199922233
+  message_count: 1372
+  topics_with_message_count:
+    - topic_metadata:
+        name: /joint_states
+        type: sensor_msgs/msg/JointState
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+        type_description_hash: RIHS01_a13ee3a330e346c9d87b5aa18d24e11690752bd33a0350f11c5882bc9179260e
+      message_count: 1372
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - R_r3deg157h0_0.mcap
+  files:
+    - path: R_r3deg157h0_0.mcap
+      starting_time:
+        nanoseconds_since_epoch: 1729984504199922233
+      duration:
+        nanoseconds: 45699507739
+      message_count: 1372
+  custom_data: ~
