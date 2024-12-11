@@ -16,6 +16,8 @@
   <exec_depend>std_msgs</exec_depend>
 
   <exec_depend>moveit_wrapper</exec_depend>
+  <exec_depend>moveit2_sdk_python</exec_depend>
+
 
   <exec_depend>rviz2</exec_depend>
   <exec_depend>moveitapi</exec_depend>

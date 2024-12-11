@@ -1,4 +1,5 @@
 from moveit_wrapper.moveitapi import MoveItApi
+from moveit2_sdk_python.franka_mover import FrankaMover, Moveit2Python  
 from std_msgs.msg import Empty
 from rclpy.callback_groups import ReentrantCallbackGroup
 from pick_place_interface.action import EmptyAction
@@ -86,7 +87,12 @@ class Robot_myo(Node):
             "joint_states",
             "panda",
         )
-
+        self.franka_mover = FrankaMover()
+        self.api = Moveit2Python(
+            base_frame="panda_link0",
+            ee_frame="panda_hand_tcp",
+            group_name="panda_manipulator",
+        )
         self.start_subscriber = self.create_subscription(
             Empty,
             "program_start",
@@ -465,12 +471,14 @@ class Robot_myo(Node):
                     self.get_logger().info(f"Moving to joint prediction {i + 1}: {joint_values_to_use}")
 
                     try:
-                        await self.moveit_api.plan_joint_async(
-                            ["panda_joint1", "panda_joint2", "panda_joint3",
-                            "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"],
-                            joint_values_to_use,
-                            execute=True
-                        )
+                        # await self.moveit_api.plan_joint_async(
+                        #     ["panda_joint1", "panda_joint2", "panda_joint3",
+                        #     "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"],
+                        #     joint_values_to_use,
+                        #     execute=True
+                        # )
+                        # await self.delay_client.call_async(DelayTime.Request(time=1.0)) 
+                        result = await self.franka_mover.move_by_joint(joint_values_to_use)
                         self.get_logger().info(f"Successfully executed movement for prediction {i + 1}.")
                     except Exception as e:
                         self.get_logger().error(f"Error moving to prediction {i + 1}: {e}")
