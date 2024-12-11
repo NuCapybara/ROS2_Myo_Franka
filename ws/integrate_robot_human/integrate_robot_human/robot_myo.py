@@ -55,7 +55,7 @@ class Robot_myo(Node):
         
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
         self.rob_scaler = MinMaxScaler(feature_range=(-1, 1))
-        rob_raw_data = pd.read_csv('/home/jialuyu/Data_Final_Project/Revised_James_Code/final_project_mVAE_pipeline/data_processing/original_data_only_t.csv', header=None, skiprows=1).reset_index(drop=True)
+        rob_raw_data = pd.read_csv('/home/jialuyu/Final_Project/data_collect_myo/ROS2_Myo_Franka/ws/models/b1k_e80k_eval/original_data_only_t.csv', header=None, skiprows=1).reset_index(drop=True)
         self.rob_scaler.fit(rob_raw_data.iloc[:,36:])
 
         self.graph = tf.Graph()
