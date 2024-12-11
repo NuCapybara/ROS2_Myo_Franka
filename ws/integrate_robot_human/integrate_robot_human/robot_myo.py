@@ -30,7 +30,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_eager_execution()
 from time import sleep
 import asyncio
-
+from sklearn.preprocessing import MinMaxScaler
 
 from collections import deque
 
@@ -52,6 +52,11 @@ class Robot_myo(Node):
         self.ru_imu_buffer = deque(maxlen=self.imu_max_size)
         self.rl_emg_buffer = deque(maxlen=self.emg_max_size)
         self.rl_imu_buffer = deque(maxlen=self.imu_max_size)
+        
+        self.scaler = MinMaxScaler(feature_range=(-1, 1))
+        self.rob_scaler = MinMaxScaler(feature_range=(-1, 1))
+        rob_raw_data = pd.read_csv('/home/jialuyu/Data_Final_Project/Revised_James_Code/final_project_mVAE_pipeline/data_processing/original_data_only_t.csv', header=None, skiprows=1).reset_index(drop=True)
+        self.rob_scaler.fit(rob_raw_data.iloc[:,36:])
 
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
@@ -277,12 +282,11 @@ class Robot_myo(Node):
             self.get_logger().info("Data not ready!! whats going on with downsample!")
             return None
 
-        empty_rob = np.full((self.df_initial_size, 18), -2)
-        array_list = [rl_imu_array, rl_emg_downsampled, ru_imu_array, ru_emg_downsampled, empty_rob]
-        initial_data = np.concatenate(array_list, axis=1) # (721, 54)
+        array_list = [rl_imu_array, rl_emg_downsampled, ru_imu_array, ru_emg_downsampled]
+        initial_data = np.concatenate(array_list, axis=1) # (721, 36)
 
-        prev_data = initial_data[:-1, :] # (720, 54)
-        cur_data = initial_data[1:, :] # (720, 54)
+        prev_data = initial_data[:-1, :] # (720, 36)
+        cur_data = initial_data[1:, :] # (720, 36)
 
         cur_prev_data_list = [cur_data, prev_data]
 
@@ -292,10 +296,8 @@ class Robot_myo(Node):
             RL_emg = cur_prev_data_list[i][:,10:18]
             RU_imu = cur_prev_data_list[i][:,18:28]
             RU_emg = cur_prev_data_list[i][:,28:36]
-            robo_pos = cur_prev_data_list[i][:,36:45]
-            robo_vel = cur_prev_data_list[i][:,45:55]
 
-            return [RL_imu, RL_emg, RU_imu, RU_emg, robo_pos, robo_vel]
+            return [RL_imu, RL_emg, RU_imu, RU_emg]
 
         cur_data_list = create_cur_prev_data_list(0)
         prev_data_list = create_cur_prev_data_list(1)
@@ -306,20 +308,24 @@ class Robot_myo(Node):
             item_list.append(prev_data_list[i])
         
         combined_data = np.concatenate(item_list, axis=1) # (720, 108)
+        self.scaler.fit(combined_data)
+        combined_data_scaled = self.scaler.fit_transform(combined_data)
+        empty_rob = np.full((self.batch_size, 36), -2)
+        combined_data_feed = np.concatenate((combined_data_scaled, empty_rob), axis=1)
 
         with self.graph.as_default():
-            x_reconstruct, _ = self.model.reconstruct(self.sess, combined_data)
-            x_sample_nv_1 = np.full((combined_data.shape[0],10),-2)
+            x_reconstruct, _ = self.model.reconstruct(self.sess, combined_data_feed)
+            x_sample_nv_1 = np.full((combined_data_feed.shape[0],10),-2)
             x_sample_nv_2 = x_reconstruct[:,:10]
-            x_sample_nv_3 = np.full((combined_data.shape[0],8),-2)
+            x_sample_nv_3 = np.full((combined_data_feed.shape[0],8),-2)
             x_sample_nv_4 = x_reconstruct[:,20:28]
-            x_sample_nv_5 = np.full((combined_data.shape[0],10),-2)
+            x_sample_nv_5 = np.full((combined_data_feed.shape[0],10),-2)
             x_sample_nv_6 = x_reconstruct[:,36:46]
-            x_sample_nv_7 = np.full((combined_data.shape[0],8),-2)
+            x_sample_nv_7 = np.full((combined_data_feed.shape[0],8),-2)
             x_sample_nv_8 = x_reconstruct[:,56:64]
-            x_sample_nv_9 = np.full((combined_data.shape[0],9),-2)
+            x_sample_nv_9 = np.full((combined_data_feed.shape[0],9),-2)
             x_sample_nv_10 = x_reconstruct[:,72:81]
-            x_sample_nv_11 = np.full((combined_data.shape[0],9),-2)
+            x_sample_nv_11 = np.full((combined_data_feed.shape[0],9),-2)
             x_sample_nv_12 = x_reconstruct[:,90:99]
 
             x_sample_list = [
@@ -339,8 +345,21 @@ class Robot_myo(Node):
 
             x_sample_nv = np.concatenate(x_sample_list, axis=1)
             x_pred, _ = self.model.reconstruct(self.sess, x_sample_nv)
+            print(x_pred[:,72:90])
 
-            return x_pred
+            retrieved_imu_emg = self.scaler.inverse_transform(x_pred[:,:72])
+            retrieved_robot_pos = self.rob_scaler.inverse_transform(x_pred[:,72:90])
+            retrieved_robot_vel = x_pred[:,90:]
+
+            retrieved_prediction = np.concatenate(
+                (
+                    retrieved_imu_emg,
+                    retrieved_robot_pos,
+                    retrieved_robot_vel,
+                ), axis=1
+            )
+
+            return retrieved_prediction
 
     # def stream_to_model(self):
     #     new_saver = tf.train.Saver()
@@ -373,16 +392,13 @@ class Robot_myo(Node):
     async def check_buffers(self):
         """Check if buffers are ready and process the data when they are."""
         X_augm_test = self.build_feed_in_emgimu()
+
         if X_augm_test is not None:
             self.timer.cancel()  # Stop the timer as buffers are ready
             self.get_logger().info("Buffers are ready. Proceeding with data processing.")
 
-            # Perform reconstruction using the restored model
-            x_reconstruct, x_reconstruct_log_sigma_sq = self.model.reconstruct(self.sess, X_augm_test)
-            self.get_logger().info("Reconstruction complete.")
-
             # Extract robot joint predictions from reconstructed data
-            self.robot_joint_pred = x_reconstruct[:, 72:81]
+            self.robot_joint_pred = X_augm_test[:, 72:81]
             self.get_logger().info(f"Robot joint prediction: {self.robot_joint_pred}")
             await self.pick_place()
         else:
@@ -442,7 +458,7 @@ class Robot_myo(Node):
 
         if self.robot_joint_pred is not None and len(self.robot_joint_pred) > 0:
             self.get_logger().info("Robot joint prediction is available. Proceeding to move the robot.")
-
+            print(self.robot_joint_pred.shape)
             for i, joint_values in enumerate(self.robot_joint_pred):
                 if len(joint_values) >= 7:
                     joint_values_to_use = joint_values[:7]
