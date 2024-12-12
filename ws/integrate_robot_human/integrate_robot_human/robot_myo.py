@@ -63,8 +63,11 @@ class Robot_myo(Node):
             header=None,
             skiprows=1,
         ).reset_index(drop=True)
-        
-        self.rob_scaler.fit(rob_raw_data.iloc[:, 36:])
+
+        rob_raw_ = pd.concat(
+            [rob_raw_data.iloc[:, 36:45], rob_raw_data.iloc[:, 36:45]], axis=1
+        )
+        self.rob_scaler.fit(rob_raw_)
 
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
@@ -322,6 +325,8 @@ class Robot_myo(Node):
         ]
         initial_data = np.concatenate(array_list, axis=1)  # (721, 36)
 
+        pd.DataFrame(initial_data).to_csv("pre_cur_prev.csv", index=False)
+
         prev_data = initial_data[:-1, :]  # (720, 36)
         cur_data = initial_data[1:, :]  # (720, 36)
 
@@ -345,10 +350,15 @@ class Robot_myo(Node):
             item_list.append(prev_data_list[i])
 
         combined_data = np.concatenate(item_list, axis=1)  # (720, 108)
+
+        pd.DataFrame(combined_data).to_csv("pre_combined.csv", index=False)
+
         self.scaler.fit(combined_data)
         combined_data_scaled = self.scaler.fit_transform(combined_data)
         empty_rob = np.full((self.batch_size, 36), -2)
         combined_data_feed = np.concatenate((combined_data_scaled, empty_rob), axis=1)
+
+        pd.DataFrame(combined_data_feed).to_csv("./post_combined.csv", index=False)
 
         with self.graph.as_default():
             x_reconstruct, _ = self.model.reconstruct(self.sess, combined_data_feed)
@@ -386,6 +396,8 @@ class Robot_myo(Node):
 
             print("min, max", self.rob_scaler.data_min_, self.rob_scaler.data_max_)
 
+            pd.DataFrame(x_pred).to_csv("./pre_upscale.csv", index=False)
+
             retrieved_imu_emg = self.scaler.inverse_transform(x_pred[:, :72])
             retrieved_robot_pos = self.rob_scaler.inverse_transform(x_pred[:, 72:90])
             retrieved_robot_vel = x_pred[:, 90:]
@@ -398,6 +410,8 @@ class Robot_myo(Node):
                 ),
                 axis=1,
             )
+
+            pd.DataFrame(retrieved_prediction).to_csv("./post_upscale.csv", index=False)
 
             return retrieved_prediction
 
@@ -497,7 +511,11 @@ class Robot_myo(Node):
                 "Robot joint prediction is available. Proceeding to move the robot."
             )
             print(self.robot_joint_pred.shape)
-            for i, joint_values in enumerate(self.robot_joint_pred):
+            designed_path = []
+            for i in range(0, 720, 10):
+                designed_path.append(self.robot_joint_pred[i])
+
+            for i, joint_values in enumerate(designed_path):
                 if len(joint_values) >= 7:
                     joint_values_to_use = joint_values[:7]
                     self.get_logger().info(
@@ -531,6 +549,40 @@ class Robot_myo(Node):
             self.get_logger().info("Completed processing all joint predictions.")
         else:
             self.get_logger().info("Robot joint prediction is not available or empty.")
+        #     for i, joint_values in enumerate(self.robot_joint_pred):
+        #         if len(joint_values) >= 7:
+        #             joint_values_to_use = joint_values[:7]
+        #             self.get_logger().info(
+        #                 f"Moving to joint prediction {i + 1}: {joint_values_to_use}"
+        #             )
+
+        #             try:
+        #                 # await self.moveit_api.plan_joint_async(
+        #                 #     ["panda_joint1", "panda_joint2", "panda_joint3",
+        #                 #     "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"],
+        #                 #     joint_values_to_use,
+        #                 #     execute=True
+        #                 # )
+        #                 # await self.delay_client.call_async(DelayTime.Request(time=1.0))
+        #                 result = await self.franka_mover.move_by_joint(
+        #                     joint_values_to_use
+        #                 )
+        #                 self.get_logger().info(
+        #                     f"Successfully executed movement for prediction {i + 1}."
+        #                 )
+        #             except Exception as e:
+        #                 self.get_logger().error(
+        #                     f"Error moving to prediction {i + 1}: {e}"
+        #                 )
+        #         else:
+        #             self.get_logger().error(
+        #                 f"Invalid joint prediction length for row {i + 1}: {len(joint_values)}"
+        #             )
+        #             continue
+
+        #     self.get_logger().info("Completed processing all joint predictions.")
+        # else:
+        #     self.get_logger().info("Robot joint prediction is not available or empty.")
 
     # Start the machien learning model pipeline
 
